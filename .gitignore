@@ -1,1 +1,13 @@
 /golang-demo
+
+# Terraform
+/terraform/.terraform
+/terraform/terraform.tfstate
+/terraform/terraform.tfstate.backup
+/terraform/terraform.tfvars
+/terraform/terraform.tfvars.json
+/terraform/.terraform.lock.hcl
+/terraform/.terraform.lock.hcl.backup
+/terraform/.terraform.lock.info
+/terraform/.terraform.lock.info.backup
+/terraform/.terraform.tfstate.lock.info
