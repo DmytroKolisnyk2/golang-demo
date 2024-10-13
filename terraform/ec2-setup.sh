@@ -8,36 +8,32 @@ sudo snap install go --classic
 sudo systemctl start nginx
 sudo systemctl enable nginx
 
-# Install and configure PostgreSQL
+# Install and configure PostgreSQL locally 
 sudo service postgresql start
 sudo systemctl enable postgresql
 
-# Set PostgreSQL password and create the database
-sudo -u postgres psql -c "ALTER USER postgres PASSWORD '${db_password}';"
-sudo -u postgres createdb golangdb
+# Set environment variables from Terraform 
+DB_ENDPOINT="${db_endpoint}"
+DB_USER="${db_user}"
+DB_PASS="${db_password}"
+DB_NAME="${db_name}"
+DB_PORT=5432
+GIN_MODE=release
+
+# Apply schema to the new remote database
+PGPASSWORD=$DB_PASS psql -h $DB_ENDPOINT -U $DB_USER -p $DB_PORT -d $DB_NAME -f db_schema.sql
 
 # Clone the Golang demo application
 cd /home/ubuntu
 git clone https://github.com/DmytroKolisnyk2/golang-demo.git
 cd golang-demo
 
-# Create schema in PostgreSQL
-sudo -u postgres psql -d golangdb -f db_schema.sql
-
 # Build the Golang binary
-GOOS=linux GOARCH=amd64 /snap/bin/go build -o golang-demo
-chmod +x golang-demo
-
-# Set environment variables from Terraform (passed via user_data)
-DB_ENDPOINT="${db_endpoint}"
-DB_USER="${db_user}"
-DB_PASS="${db_password}"
-DB_NAME="golangdb"
-DB_PORT=5432
-GIN_MODE=release
+sudo GOOS=linux GOARCH=amd64 go build -o golang-demo -buildvcs=false
+sudo chmod +x golang-demo
 
 # Start the Golang application with the required environment variables
-DB_ENDPOINT=$DB_ENDPOINT DB_PORT=$DB_PORT DB_USER=$DB_USER DB_PASS=$DB_PASS DB_NAME=$DB_NAME ./golang-demo
+sudo DB_ENDPOINT=$DB_ENDPOINT DB_PORT=$DB_PORT DB_USER=$DB_USER DB_PASS=$DB_PASS DB_NAME=$DB_NAME ./golang-demo 
 
 # Configure Nginx to proxy traffic to the Golang application
 sudo bash -c 'cat > /etc/nginx/sites-available/default' << EOF

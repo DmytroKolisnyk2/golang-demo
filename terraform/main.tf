@@ -95,7 +95,7 @@ resource "aws_security_group" "ec2_sg" {
 # EC2 Instance with dynamically fetched Ubuntu 20.04 AMI
 resource "aws_instance" "golang_demo" {
   ami                    = data.aws_ami.ubuntu_20_04.id
-  instance_type          = "t2.micro"
+  instance_type          = "t3.micro"
   subnet_id              = aws_subnet.public_subnets[0].id
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   key_name               = "1.0.0"
@@ -108,6 +108,7 @@ resource "aws_instance" "golang_demo" {
     db_endpoint = aws_db_instance.postgres.endpoint,
     db_user     = var.db_username,
     db_password = var.db_password
+    db_name = var.db_name
   })
 }
 
@@ -117,7 +118,7 @@ resource "aws_db_instance" "postgres" {
   allocated_storage    = 20
   engine               = "postgres"
   engine_version       = "13"
-  db_name              = "golangdb"
+  db_name              = var.db_name
   username             = var.db_username
   password             = var.db_password
   parameter_group_name = "default.postgres13"
