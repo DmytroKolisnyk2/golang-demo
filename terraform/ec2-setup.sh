@@ -20,13 +20,14 @@ DB_NAME="${db_name}"
 DB_PORT=5432
 GIN_MODE=release
 
-# Apply schema to the new remote database
-PGPASSWORD=$DB_PASS psql -h $DB_ENDPOINT -U $DB_USER -p $DB_PORT -d $DB_NAME -f db_schema.sql
 
 # Clone the Golang demo application
 cd /home/ubuntu
 git clone https://github.com/DmytroKolisnyk2/golang-demo.git
 cd golang-demo
+
+# Apply schema to the new remote database
+PGPASSWORD=$DB_PASS psql -h $DB_ENDPOINT -U $DB_USER -p $DB_PORT -d $DB_NAME -f db_schema.sql
 
 # Build the Golang binary
 sudo GOOS=linux GOARCH=amd64 go build -o golang-demo -buildvcs=false
