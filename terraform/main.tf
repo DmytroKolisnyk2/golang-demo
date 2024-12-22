@@ -67,7 +67,6 @@ resource "aws_route" "internet_access" {
 resource "aws_security_group" "ec2_sg" {
   vpc_id = aws_vpc.main_vpc.id
 
-  # Allow SSH
   ingress {
     from_port   = 22
     to_port     = 22
@@ -75,7 +74,6 @@ resource "aws_security_group" "ec2_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow HTTP
   ingress {
     from_port   = 80
     to_port     = 80
@@ -83,7 +81,6 @@ resource "aws_security_group" "ec2_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow all outbound traffic
   egress {
     from_port   = 0
     to_port     = 0
@@ -92,65 +89,64 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
-# EC2 Instance with dynamically fetched Ubuntu 20.04 AMI
-resource "aws_instance" "golang_demo" {
-  ami                    = data.aws_ami.ubuntu_20_04.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.public_subnets[0].id
-  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
-  key_name               = "1.0.0"
+# Create two EC2 instances for the "silly-demo" app
+resource "aws_instance" "silly_demo" {
+  count                   = 2
+  ami                     = data.aws_ami.ubuntu_20_04.id
+  instance_type           = "t3.micro"
+  subnet_id               = aws_subnet.public_subnets[0].id
+  vpc_security_group_ids  = [aws_security_group.ec2_sg.id]
+  key_name                = "1.0.0"
 
   tags = {
-    Name = "GolangDemoInstance"
+    Name = "SillyDemo-${count.index}"
   }
 
-  user_data = templatefile("ec2-setup.sh", {
-    db_endpoint = aws_db_instance.postgres.endpoint,
-    db_user     = var.db_username,
-    db_password = var.db_password
-    db_name = var.db_name
-  })
-}
+  user_data = file("ec2-setup.sh")
 
-# RDS PostgreSQL instance
-resource "aws_db_instance" "postgres" {
-  instance_class       = "db.t4g.micro"
-  allocated_storage    = 20
-  engine               = "postgres"
-  engine_version       = "13"
-  db_name              = var.db_name
-  username             = var.db_username
-  password             = var.db_password
-  parameter_group_name = "default.postgres13"
+  instance_initiated_shutdown_behavior = "terminate"
 
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.name
-
-  skip_final_snapshot = true
-}
-
-# RDS Security Group
-resource "aws_security_group" "rds_sg" {
-  vpc_id = aws_vpc.main_vpc.id
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  lifecycle {
+    ignore_changes = [ami]
   }
 }
 
-# Subnet group for RDS
-resource "aws_db_subnet_group" "rds_subnet_group" {
-  name        = "rds-subnet-group"
-  subnet_ids  = aws_subnet.public_subnets[*].id
-  description = "RDS subnet group"
+# Create an ALB
+resource "aws_lb" "app_lb" {
+  name               = "app-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.ec2_sg.id]
+  subnets            = aws_subnet.public_subnets[*].id
+
+  enable_deletion_protection = false
+}
+
+# Create a Target Group for the ALB
+resource "aws_lb_target_group" "app_tg" {
+  name        = "app-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main_vpc.id
+  target_type = "instance"
+}
+
+# Attach EC2 instances to the Target Group
+resource "aws_lb_target_group_attachment" "tg_attachment" {
+  count            = 2
+  target_group_arn = aws_lb_target_group.app_tg.arn
+  target_id        = aws_instance.silly_demo[count.index].id
+  port             = 80
+}
+
+# Create a Listener for the ALB
+resource "aws_lb_listener" "app_listener" {
+  load_balancer_arn = aws_lb.app_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg.arn
+  }
 }
