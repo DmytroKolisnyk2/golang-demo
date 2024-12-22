@@ -1,5 +1,5 @@
 image:
-  repository: your-docker-repo/silly-demo
+  repository: ""
   tag: "latest"
 
 service:
