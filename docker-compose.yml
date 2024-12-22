@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  golang-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+      - /app/vendor
+    ports:
+      - "8080:8080"
+    environment:
+      DB_ENDPOINT: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres_password
+      DB_NAME: db
+    depends_on:
+      - postgres
+    command: air
+
+  postgres:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db_schema.sql:/docker-entrypoint-initdb.d/db_schema.sql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: db
+    ports:
+      - "5432:5432"
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - golang-app
+
+volumes:
+  postgres_data:

@@ -134,7 +134,7 @@ func getDB(c *gin.Context) *pg.DB {
 
     Database: name,
 
-    TLSConfig: &tls.Config{InsecureSkipVerify: true},
+    // TLSConfig: &tls.Config{InsecureSkipVerify: true},
 
 })
 
