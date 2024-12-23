@@ -1,7 +1,12 @@
-image:
-  repository: ""
-  tag: "latest"
+golangApp:
+  image: golang-demo:latest
 
-service:
-  type: ClusterIP
-  port: 80
+nginx:
+  image: nginx:latest
+
+postgres:
+  image: postgres:13
+  user: postgres
+  password: postgres_password
+  db: db
+  host: postgres
